@@ -1,7 +1,7 @@
 import graphene
 from graphene_django import DjangoObjectType
 from .models import flows, coordinates, category
-
+from django.views.decorators.csrf import csrf_exempt
 class flowsType(DjangoObjectType):
     class Meta:
         model = flows
@@ -17,16 +17,26 @@ class coordinatesType(DjangoObjectType):
         model = coordinates
         fields = ("id","coordinates")
 
+
 class Query(graphene.ObjectType):
     alldatas = graphene.List(flowsType)
-    category_data = graphene.List(flowsType, category=graphene.String(required=True))
+    category_data = graphene.List(flowsType, in_category=graphene.String(required=True))
+    filtered_category_and_date_data = graphene.List(flowsType, in_category=graphene.String(required=True), begin=graphene.DateTime(required=True), end=graphene.DateTime(required=True))
 
     def resolve_alldatas(root, info):
         return flows.objects.all()
 
-    def resolve_category_data (root, info, category):
+    def resolve_category_data (root, info, in_category):
         try:
-            return flows.objects.filter(category=category)
+            temp_cat = category.objects.get(category=in_category)
+            return flows.objects.filter(category=temp_cat)
+        except flows.DoesNotExist:
+            return None     
+    def resolve_filtered_category_and_date_data(root, info, in_category, begin, end):
+        print(in_category)
+        try:
+            temp_cat = category.objects.get(category=in_category)
+            return flows.objects.filter(category=temp_cat).filter(time__range=(begin, end))
         except flows.DoesNotExist:
             return None
 
